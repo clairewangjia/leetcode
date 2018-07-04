@@ -244,3 +244,66 @@ join (select followee, count(distinct follower) as num
      group by followee) f2
 on f1.follower = f2.followee
 order by f1.follower
+
+# 615. Average Salary: Departments VS Company
+select a.month as pay_month, b.department_id, 
+(case when a.avg_salary<b.dept_salary then 'higher'
+    when a.avg_salary>b.dept_salary then 'lower'
+    else 'same' end) as comparison
+from (select LEFT(pay_date, 7) as month, avg(amount) as avg_salary
+ from salary
+group by LEFT(pay_date, 7)) a
+join (select LEFT(s.pay_date, 7) as month, e.department_id, avg(s.amount) as dept_salary
+      from salary s
+      join employee e
+      on s.employee_id = e.employee_id
+     group by LEFT(s.pay_date, 7), e.department_id) b
+on a.month = b.month
+
+# 185. Department Top Three Salaries
+select d.Name as Department, t.Employee, t.Salary
+from (select e.DepartmentId as Id, e.Name as Employee, e.Salary, dense_rank()over (partition by e.DepartmentId order by e.Salary desc) as num
+from Employee e) t
+join Department d
+on t.Id = d.Id
+where t.num <= 3
+
+
+select d.Name Department, e1.Name Employee, e1.Salary
+from Employee e1 
+join Department d
+on e1.DepartmentId = d.Id
+where 3 > (select count(distinct(e2.Salary)) 
+                  from Employee e2 
+                  where e2.Salary > e1.Salary 
+                  and e1.DepartmentId = e2.DepartmentId
+                  );
+
+# 262. Trips and Users
+select b.Day, ifnull(round(a.cancel/b.total, 2),0) as Cancellation_Rate
+from (select t.Request_at as Day, ifnull(count(t.Id),0) as cancel
+     from Trips t
+      join Users u
+      on t.Client_Id = u.Users_Id
+     where t.Status like "cancelled_%"
+      and u.Banned = 'No'
+     group by t.Request_at) a
+right join (select t.Request_at as Day, count(*) as total
+     from Trips t
+    join Users u
+      on t.Client_Id = u.Users_Id
+    where u.Banned = 'No'
+     group by t.Request_at) b
+on a.Day = b.Day
+
+# 585. Investments in 2016
+select sum(i1.TIV_2016) as TIV_2016
+from insurance i1
+where i1.TIV_2015 in (select TIV_2015
+                     from insurance
+                     group by TIV_2015
+                     having count(PID)>1)
+and concat(LAT, LON) in (select concat(LAT, LON)
+                            from insurance
+                            group by LAT, LON
+                            having count(PID)=1)
